@@ -1,3 +1,5 @@
+.history
+/build
 .vs
 *.opendb
 *.db

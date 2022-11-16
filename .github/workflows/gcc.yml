@@ -8,7 +8,6 @@ on:
 
 jobs:
   build:
-
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -42,3 +41,6 @@ jobs:
         make -j`nproc` -C test TRACYFLAGS=-DTRACY_ON_DEMAND
         make -j`nproc` -C test clean
         make -j`nproc` -C test TRACYFLAGS="-DTRACY_DELAYED_INIT -DTRACY_MANUAL_LIFETIME"
+    - uses: actions/upload-artifact@v2
+      with:
+        path: ./
