@@ -1,4 +1,4 @@
-name: gcc
+name: macos
 
 on:
   push:
@@ -8,17 +8,12 @@ on:
 
 jobs:
   build:
-    runs-on: macOS-latest
-    strategy:
-      fail-fast: false
 
+    runs-on: macOS-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Install linux libraries
-      if: ${{ matrix.os == 'ubuntu-22.04' }}
-      run: sudo apt-get update && sudo apt-get -y install libdbus-1-dev libcapstone-dev libtbb-dev libdebuginfod-dev libxkbcommon-dev libegl-dev libwayland-dev
     - name: Install macos libraries
-      run: brew install capstone tbb pkg-config glfw
+      run: brew install capstone tbb pkg-config glfw meson
     - name: Profiler GUI
       run: make -j`nproc` -C profiler/build/unix debug release
     - name: Update utility
@@ -31,6 +26,8 @@ jobs:
       run: make -j`nproc` -C import-chrome/build/unix debug release
     - name: Library
       run: make -j`nproc` -C library/unix debug release
+    - name: Library (meson)
+      run: meson setup -Dprefix=$PWD/install build && meson compile -C build && meson install -C build
     - name: Test application
       run: |
         make -j`nproc` -C test
@@ -38,6 +35,4 @@ jobs:
         make -j`nproc` -C test TRACYFLAGS=-DTRACY_ON_DEMAND
         make -j`nproc` -C test clean
         make -j`nproc` -C test TRACYFLAGS="-DTRACY_DELAYED_INIT -DTRACY_MANUAL_LIFETIME"
-    - uses: actions/upload-artifact@v2
-      with:
-        path: ./
+        make           -C test -B ../public/TracyClient.o DEFINES='-DTRACY_DEMANGLE'

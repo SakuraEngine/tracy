@@ -136,6 +136,13 @@ static void SetupDPIScale( float scale, ImFont*& cb_fixedWidth, ImFont*& cb_bigF
 {
     LoadFonts( scale, cb_fixedWidth, cb_bigFont, cb_smallFont );
 
+#ifdef __APPLE__
+    // No need to upscale the style on macOS, but we need to downscale the fonts.
+    ImGuiIO& io = ImGui::GetIO();
+    io.FontGlobalScale = 1.0f / dpiScale;
+    scale = 1.0f;
+#endif
+
     auto& style = ImGui::GetStyle();
     style = ImGuiStyle();
     ImGui::StyleColorsDark();
@@ -323,14 +330,8 @@ int main( int argc, char** argv )
     return 0;
 }
 
-static void DrawContents()
+static void UpdateBroadcastClients()
 {
-    static bool reconnect = false;
-    static std::string reconnectAddr;
-    static uint16_t reconnectPort;
-    static bool showFilter = false;
-
-#ifndef __EMSCRIPTEN__
     if( !view )
     {
         const auto time = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() ).count();
@@ -473,6 +474,17 @@ static void DrawContents()
     {
         clients.clear();
     }
+}
+
+static void DrawContents()
+{
+    static bool reconnect = false;
+    static std::string reconnectAddr;
+    static uint16_t reconnectPort;
+    static bool showFilter = false;
+
+#ifndef __EMSCRIPTEN__
+    UpdateBroadcastClients();
 #endif
 
     int display_w, display_h;
@@ -562,7 +574,7 @@ static void DrawContents()
                 ImGui::Indent();
                 if( ImGui::RadioButton( "Enabled", s_config.threadedRendering ) ) { s_config.threadedRendering = true; SaveConfig(); }
                 ImGui::SameLine();
-                tracy::DrawHelpMarker( "Uses all available CPU cores for rendering. May affect performance of the profiled application when running on the same machine." );
+                tracy::DrawHelpMarker( "Uses multiple CPU cores for rendering. May affect performance of the profiled application when running on the same machine." );
                 if( ImGui::RadioButton( "Disabled", !s_config.threadedRendering ) ) { s_config.threadedRendering = false; SaveConfig(); }
                 ImGui::SameLine();
                 tracy::DrawHelpMarker( "Restricts rendering to a single CPU core. Can reduce profiler frame rate." );

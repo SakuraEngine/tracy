@@ -519,7 +519,7 @@ static void RegistryGlobal( void*, struct wl_registry* reg, uint32_t name, const
     }
     else if( strcmp( interface, wl_seat_interface.name ) == 0 )
     {
-        s_seat = (wl_seat*)wl_registry_bind( reg, name, &wl_seat_interface, 7 );
+        s_seat = (wl_seat*)wl_registry_bind( reg, name, &wl_seat_interface, 5 );
         wl_seat_add_listener( s_seat, &seatListener, nullptr );
     }
     else if( strcmp( interface, xdg_activation_v1_interface.name ) == 0 )
@@ -536,12 +536,6 @@ static void RegistryGlobal( void*, struct wl_registry* reg, uint32_t name, const
     else if( strcmp( interface, zxdg_decoration_manager_v1_interface.name ) == 0 )
     {
         s_decoration = (zxdg_decoration_manager_v1*)wl_registry_bind( reg, name, &zxdg_decoration_manager_v1_interface, 1 );
-    }
-    else if( strcmp( interface, zxdg_toplevel_decoration_v1_interface.name ) == 0 )
-    {
-        s_tldec = (zxdg_toplevel_decoration_v1*)wl_registry_bind( reg, name, &zxdg_toplevel_decoration_v1_interface, 1 );
-        zxdg_toplevel_decoration_v1_add_listener( s_tldec, &decorationListener, nullptr );
-        zxdg_toplevel_decoration_v1_set_mode( s_tldec, ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE );
     }
 }
 
@@ -703,7 +697,9 @@ Backend::Backend( const char* title, const std::function<void()>& redraw, RunQue
 
     if( s_decoration )
     {
-        zxdg_decoration_manager_v1_get_toplevel_decoration( s_decoration, s_toplevel );
+        s_tldec = zxdg_decoration_manager_v1_get_toplevel_decoration( s_decoration, s_toplevel );
+        zxdg_toplevel_decoration_v1_add_listener( s_tldec, &decorationListener, nullptr );
+        zxdg_toplevel_decoration_v1_set_mode( s_tldec, ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE );
         wl_display_roundtrip( s_dpy );
     }
 

@@ -4,6 +4,8 @@
 
 #ifdef _WIN32
 #  include <malloc.h>
+#elif defined __FreeBSD__
+#  include <stdlib.h>
 #else
 #  include <alloca.h>
 #endif
@@ -551,11 +553,12 @@ Worker::Worker( const char* name, const char* program, const std::vector<ImportE
     }
 }
 
-Worker::Worker( FileRead& f, EventType::Type eventMask, bool bgTasks )
+Worker::Worker( FileRead& f, EventType::Type eventMask, bool bgTasks, bool allowStringModification)
     : m_hasData( true )
     , m_stream( nullptr )
     , m_buffer( nullptr )
     , m_inconsistentSamples( false )
+    , m_allowStringModification(allowStringModification)
 {
     auto loadStart = std::chrono::high_resolution_clock::now();
 
@@ -705,7 +708,12 @@ Worker::Worker( FileRead& f, EventType::Type eventMask, bool bgTasks )
 
     f.Read( sz );
     m_data.stringMap.reserve( sz );
-    m_data.stringData.reserve_exact( sz, m_slab );
+
+    if( !m_allowStringModification )
+    {
+        m_data.stringData.reserve_exact( sz, m_slab );
+    }
+    
     for( uint64_t i=0; i<sz; i++ )
     {
         uint64_t ptr, ssz;
@@ -714,7 +722,16 @@ Worker::Worker( FileRead& f, EventType::Type eventMask, bool bgTasks )
         f.Read( dst, ssz );
         dst[ssz] = '\0';
         m_data.stringMap.emplace( charutil::StringKey { dst, size_t( ssz ) }, i );
-        m_data.stringData[i] = ( dst );
+
+        if( m_allowStringModification )
+        {
+            m_data.stringData.push_back( dst );
+        }
+        else
+        {
+            m_data.stringData[i] = ( dst );
+        }
+
         pointerMap.emplace( ptr, dst );
     }
 
@@ -2754,6 +2771,7 @@ void Worker::Exec()
         m_captureTime = welcome.epoch;
         m_executableTime = welcome.exectime;
         m_ignoreMemFreeFaults = ( welcome.flags & WelcomeFlag::OnDemand ) || ( welcome.flags & WelcomeFlag::IsApple );
+        m_ignoreFrameEndFaults = welcome.flags & WelcomeFlag::OnDemand;
         m_data.cpuArch = (CpuArchitecture)welcome.cpuArch;
         m_codeTransfer = welcome.flags & WelcomeFlag::CodeTransfer;
         m_combineSamples = welcome.flags & WelcomeFlag::CombineSamples;
@@ -4587,6 +4605,9 @@ bool Worker::Process( const QueueItem& ev )
     case QueueType::GpuCalibration:
         ProcessGpuCalibration( ev.gpuCalibration );
         break;
+    case QueueType::GpuTimeSync:
+        ProcessGpuTimeSync( ev.gpuTimeSync );
+        break;
     case QueueType::GpuContextName:
         ProcessGpuContextName( ev.gpuContextName );
         break;
@@ -5071,12 +5092,12 @@ void Worker::ProcessFrameMarkEnd( const QueueFrameMark& ev )
     } );
 
     assert( fd->continuous == 0 );
-    const auto time = TscTime( ev.time );
     if( fd->frames.empty() )
     {
-        FrameEndFailure();
+        if( !m_ignoreFrameEndFaults ) FrameEndFailure();
         return;
     }
+    const auto time = TscTime( ev.time );
     assert( fd->frames.back().end == -1 );
     fd->frames.back().end = time;
     if( m_data.lastTime < time ) m_data.lastTime = time;
@@ -5918,6 +5939,29 @@ void Worker::ProcessGpuCalibration( const QueueGpuCalibration& ev )
     ctx->calibrationMod = double( cpuDelta ) / gpuDelta;
     ctx->calibratedGpuTime = gpuTime;
     ctx->calibratedCpuTime = TscTime( ev.cpuTime );
+}
+    
+void Worker::ProcessGpuTimeSync( const QueueGpuTimeSync& ev )
+{
+    auto ctx = m_gpuCtxMap[ev.context];
+    assert( ctx );
+
+    int64_t gpuTime;
+    if( ctx->period == 1.f )
+    {
+        gpuTime = ev.gpuTime;
+    }
+    else
+    {
+        gpuTime = int64_t( double( ctx->period ) * ev.gpuTime );      // precision loss
+    }
+
+    const auto cpuTime = TscTime( ev.cpuTime );
+
+    ctx->timeDiff = cpuTime - gpuTime;
+    ctx->lastGpuTime = 0;
+    ctx->overflow = 0;
+    ctx->overflowMul = 0;
 }
 
 void Worker::ProcessGpuContextName( const QueueGpuContextName& ev )

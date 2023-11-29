@@ -1,5 +1,5 @@
 % !TeX spellcheck = en_US
-\documentclass[hidelinks,titlepage,a4paper]{article}
+\documentclass[hidelinks,titlepage,a4paper,twoside]{article}
 
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
@@ -39,7 +39,7 @@
 \fancyfoot{} % Blank out the default footer
 \fancyhead[L]{Tracy Profiler}
 \fancyhead[R]{The user manual}
-\fancyfoot[RO]{\thepage} % Custom footer text
+\fancyfoot[RO,LE]{\thepage} % Custom footer text
 
 \usepackage{listings}
 \usepackage{xcolor}
@@ -373,6 +373,7 @@ Tracy Profiler supports  MSVC, GCC, and clang. You will need to use a reasonably
 \item WSL (x64)
 \item OSX (x64)
 \item iOS (ARM, ARM64)
+\item QNX (x64)
 \end{itemize}
 
 Moreover, the following platforms are not supported due to how secretive their owners are but were reported to be working after extending the system integration layer:
@@ -581,6 +582,16 @@ The best way to run Tracy is on bare metal. Avoid profiling applications in virt
 \item Inability to obtain precise timestamps, resulting in error messages such as \emph{CPU doesn't support RDTSC instruction}, or \emph{CPU doesn't support invariant TSC}. On Windows, you can work this around by rebuilding the profiled application with the \texttt{TRACY\_TIMER\_QPC} define, which severely lowers the resolution of time readings.
 \item Frequency of call stack sampling may be reduced.
 \item Call stack sampling might lack time stamps. While you can use such a reduced data set to perform statistical analysis, you won't be able to limit the time range or see the sampling zones on the timeline.
+\end{itemize}
+
+\paragraph{Docker on Linux}
+
+Although the basic features will work without them, you'll have to grant elevated access rights to the container running your client. Here is a sample configuration that \textit{may} enable the CPU sampling features\footnote{Tested on Ubuntu 22.04.3, docker 24.0.4}.
+\begin{itemize}
+    \item \texttt{-{}-privileged}
+    \item \texttt{-{}-mount "type=bind,source=/sys/kernel/debug,target=/sys/kernel/debug,readonly"}
+    \item \texttt{-{}-user 0:0}
+    \item \texttt{-{}-pid=host}
 \end{itemize}
 
 \subsubsection{Changing network port}
@@ -864,26 +875,27 @@ Some features of the profiler are only available on selected platforms. Please r
 
 \begin{table}[h]
 \centering
-\begin{tabular}[h]{c|c|c|c|c|c|c}
-\textbf{Feature} & \textbf{Windows} & \textbf{Linux} & \textbf{Android} & \textbf{OSX} & \textbf{iOS} & \textbf{BSD} \\ \hline
-Profiling program init & \faCheck & \faCheck & \faCheck & \faPoo & \faPoo & \faCheck \\
-CPU zones & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck \\
-Locks & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck \\
-Plots & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck \\
-Messages & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck \\
-Memory & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck \\
-GPU zones (OpenGL) & \faCheck & \faCheck & \faCheck & \faPoo & \faPoo & \\
-GPU zones (Vulkan) & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck & \\
-Call stacks & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck \\
-Symbol resolution & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck \\
-Crash handling & \faCheck & \faCheck & \faCheck & \faTimes & \faTimes & \faTimes \\
-CPU usage probing & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck \\
-Context switches & \faCheck & \faCheck & \faCheck & \faTimes & \faPoo & \faTimes \\
-Wait stacks & \faCheck & \faCheck & \faCheck & \faTimes & \faPoo & \faTimes \\
-CPU topology information & \faCheck & \faCheck & \faCheck & \faTimes & \faTimes & \faTimes \\
-Call stack sampling & \faCheck & \faCheck & \faCheck & \faTimes & \faPoo & \faTimes \\
-Hardware sampling & \faCheck{}\textsuperscript{\emph{a}} & \faCheck & \faCheck & \faTimes & \faPoo & \faTimes \\
-VSync capture & \faCheck & \faCheck & \faTimes & \faTimes & \faTimes & \faTimes \\
+\begin{tabular}[h]{c|c|c|c|c|c|c|c}
+\textbf{Feature} & \textbf{Windows} & \textbf{Linux} & \textbf{Android} & \textbf{OSX} & \textbf{iOS} & \textbf{BSD} & \textbf{QNX} \\ \hline
+Profiling program init & \faCheck & \faCheck & \faCheck & \faPoo & \faPoo & \faCheck & \faCheck \\
+CPU zones & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck \\
+Locks & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck \\
+Plots & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck \\
+Messages & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck \\
+Memory & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck & \faTimes \\
+% GPU zones fields intentionally left blank for BSDs
+GPU zones (OpenGL) & \faCheck & \faCheck & \faCheck & \faPoo & \faPoo & & \faTimes \\
+GPU zones (Vulkan) & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck & & \faTimes \\
+Call stacks & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck & \faTimes \\
+Symbol resolution & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck \\
+Crash handling & \faCheck & \faCheck & \faCheck & \faTimes & \faTimes & \faTimes & \faTimes \\
+CPU usage probing & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck & \faCheck & \faTimes \\
+Context switches & \faCheck & \faCheck & \faCheck & \faTimes & \faPoo & \faTimes & \faTimes \\
+Wait stacks & \faCheck & \faCheck & \faCheck & \faTimes & \faPoo & \faTimes & \faTimes \\
+CPU topology information & \faCheck & \faCheck & \faCheck & \faTimes & \faTimes & \faTimes & \faTimes \\
+Call stack sampling & \faCheck & \faCheck & \faCheck & \faTimes & \faPoo & \faTimes & \faTimes \\
+Hardware sampling & \faCheck{}\textsuperscript{\emph{a}} & \faCheck & \faCheck & \faTimes & \faPoo & \faTimes & \faTimes \\
+VSync capture & \faCheck & \faCheck & \faTimes & \faTimes & \faTimes & \faTimes & \faTimes \\
 \end{tabular}
 
 \vspace{1em}
@@ -1486,6 +1498,8 @@ The profiling results you will get can be unreliable or plainly wrong. It all de
 
 For example, on Linux, the Intel GPU driver will report 64-bit precision of time stamps. Unfortunately, this is not true, as the driver will only provide timestamps with 36-bit precision, rolling over the exceeding values. Tracy can detect such problems and employ workarounds. This is, sadly, not enough to make the readings reliable, as this timer we can access through the API is not a real one. Deep down, the driver has access to the actual timer, which it uses to provide the virtual values we can get. Unfortunately, this hardware timer has a period which \emph{does not match} the period of the API timer. As a result, the virtual timer will sometimes overflow \emph{in midst} of a cycle, making the reported time values jump forward. This is a problem that only the driver vendor can fix.
 
+Another problem discovered on AMD GPUs under Linux causes the timestamp register to be reset every time the GPU enters a low-power mode. This can happen virtually every frame if you are rendering with vertical synchronization disabled. Needless to say, the timestamp data is not very useful in this case. The solution to this problem is to navigate to the \texttt{/sys/devices/pci*/*/*/} directory corresponding to the GPU and set the \texttt{power\_dpm\_force\_performance\_level} value to \texttt{manual} and the \texttt{pp\_power\_profile\_mode} value to the number corresponding to the \texttt{COMPUTE} profile. Your mileage may vary, however -- on my system I only have one of these values available to set. Nevertheless, you will find a similar solution suggested by the system vendor in a Direct3D 12 section later in the manual.
+
 If you experience crippling problems while profiling the GPU, you might get better results with a different driver, different operating system, or different hardware.
 \end{bclogo}
 
@@ -1530,6 +1544,12 @@ To enable calibrated context, replace the macro \texttt{TracyVkContext} with \te
 Vulkan 1.2 and \texttt{VK\_EXT\_host\_query\_reset} provide mechanics to reset the query pool without the need of a command buffer. By using \texttt{TracyVkContextHostCalibrated} you can make use of this feature. It only requires a function pointer to \texttt{vkResetQueryPool} in addition to the ones required for \texttt{TracyVkContextCalibrated} instead of the VkQueue and VkCommandBuffer handles.
 
 However, using this feature requires the physical device to have calibrated device and host time domains. In addition to \texttt{VK\_TIME\_DOMAIN\_DEVICE\_EXT}, \texttt{vkGetPhysicalDeviceCalibrateableTimeDomainsEXT} will have to additionally return either \texttt{VK\_TIME\_DOMAIN\_CLOCK\_MONOTONIC\_RAW\_EXT} or \texttt{VK\_TIME\_DOMAIN\_QUERY\_PERFORMANCE\_COUNTER\_EXT} for Unix and Windows, respectively. If this is not the case, you will need to use \texttt{TracyVkContextCalibrated} or \texttt{TracyVkContext} macro instead.
+
+\subparagraph{Dynamically loading the Vulkan symbols}
+
+Some applications dynamically link the Vulkan loader, and manage a local symbol table, to remove the trampoline overhead of calling through the Vulkan loader itself.
+
+When \texttt{TRACY\_VK\_USE\_SYMBOL\_TABLE} is defined the signature of \texttt{TracyVkContext}, \texttt{TracyVkContextCalibrated}, and \texttt{TracyVkContextHostCalibrated} are adjusted to take in the \texttt{VkInstance}, \texttt{PFN\_vkGetInstanceProcAddr}, and \texttt{PFN\_vkGetDeviceProcAddr} to enable constructing a local symbol table to be used to call through the Vulkan API when tracing.
 
 \subsubsection{Direct3D 11}
 
@@ -1688,6 +1708,14 @@ logo=\bclampe
 Tracy will prepare for call stack collection regardless of whether you use the functionality or not. In some cases, this may be unwanted or otherwise troublesome for the user. To disable support for collecting call stacks, define the \texttt{TRACY\_NO\_CALLSTACK} macro.
 \end{bclogo}
 
+\begin{bclogo}[
+noborder=true,
+couleur=black!5,
+logo=\bclampe
+]{libunwind}
+On some platforms you can define \texttt{TRACE\_CLIENT\_LIBUNWIND\_BACKTRACE} to use libunwind to perform callstack captures as it might be a faster alternative than the default implementation. If you do, you must compile/link you client against libunwind. See \url{https://github.com/libunwind/libunwind} for more details.
+\end{bclogo}
+
 \subsubsection{Debugging symbols}
 
 You must compile the profiled application with debugging symbols enabled to have correct call stack information. You can achieve that in the following way:
@@ -1758,9 +1786,39 @@ void DbgHelpUnlock() { ReleaseMutex(dbgHelpLock); }
 }
 \end{lstlisting}
 
+At initilization time, tracy will attempt to preload symbols for device drivers and process modules. As this process can be slow when a lot of pdbs are involved, you can set the \texttt{TRACY\_NO\_DBHELP\_INIT\_LOAD} environment variable to "1" to disable this behavior and rely on-demand symbol loading.
+
 \paragraph{Disabling resolution of inline frames}
 
 Inline frames retrieval on Windows can be multiple orders of magnitude slower than just performing essential symbol resolution. This manifests as profiler seemingly being stuck for a long time, having hundreds of thousands of query backlog entries queued, which are slowly trickling down. If your use case requires speed of operation rather than having call stacks with inline frames included, you may define the \texttt{TRACY\_NO\_CALLSTACK\_INLINES} macro, which will make the profiler stick to the basic but fast frame resolution mode.
+
+\paragraph{Offline symbol resolution}
+
+By default, tracy client resolves callstack symbols in a background thread at runtime.
+This process requires that tracy client load symbols for the shared libraries 
+involved, which requires additial memory allocations, and potential impact runtime performance if a lot of symbol queries are involved.
+As an alternative to to runtime symbol resolution, we can set the environment variable
+ \texttt{TRACY\_SYMBOL\_OFFLINE\_RESOLVE} to 1 and instead have tracy client only resolve
+ the minimal set of info required for offline resolution (a shared library path and an offset into that shared library).
+ 
+The generated tracy capture will have callstack frames symbols showing \texttt{[unresolved]}.
+The \texttt{update} tool can be used to load that capture, perform symbol resolution offline
+(by passing \texttt{-r}) and writing out a new capture with symbols resolved.
+By default \texttt{update} will use the original shared libraries paths that were recorded 
+in the capture (which assumes running in the same machine or a machine with identical 
+filesystem setup as the one used to run the tracy instrumented application).
+ You can do path substitution with the \texttt{-p} option to perform any number of path
+substitions in order to use symbols located elsewhere.
+
+\begin{bclogo}[
+noborder=true,
+couleur=black!5,
+logo=\bcbombe
+]{Important}
+Beware that \texttt{update} will use any matching symbol file to the path it resolved to (no symbol version checking is done), so if the symbol file doesn't match the code that was used when doing the callstack capturing you will get incorrect results.
+
+Also note that in the case of using offline symbol resolving, even after running the \texttt{update} tool to resolve symbols, the symbols statistics are not updated and will still report the unresolved symbols.
+\end{bclogo}
 
 \subsection{Lua support}
 
@@ -1967,6 +2025,8 @@ GPU zones are ended via \texttt{\_\_\_tracy\_emit\_gpu\_zone\_end}.
 
 When the timestamps are fetched from the GPU, they must then be emitted via the \texttt{\_\_\_tracy\_emit\_gpu\_time} function. After all timestamps for a frame are emitted, \texttt{queryIds} may be re-used.
 
+CPU and GPU timestamps may be periodically resynchronized via the \texttt{\_\_\_tracy\_emit\_gpu\_time\_sync} function, which takes the GPU timestamp closest to the moment of the call. This can help with timestamp drift and work around compounding GPU timestamp overflowing. Note that this requires CPU and GPU synchronization, which will block execution of your application. Do not do this every frame.
+
 To see how you should use this API, you should look at the reference implementation contained in API-specific C++ headers provided by Tracy. For example, to see how to write your instrumentation of OpenGL, you should closely follow the contents of the \texttt{TracyOpenGL.hpp} implementation.
 
 \subsubsection{Fibers}
@@ -2037,7 +2097,7 @@ Tracy will perform an automatic collection of system data without user intervent
 
 Some profiling data can only be retrieved using the kernel facilities, which are not available to users with normal privilege level. To collect such data, you will need to elevate your rights to the administrator level. You can do so either by running the profiled program from the \texttt{root} account on Unix or through the \emph{Run as administrator} option on Windows\footnote{To make this easier, you can run MSVC with admin privileges, which will be inherited by your program when you start it from within the IDE.}. On Android, you will need to have a rooted device (see section~\ref{androidlunacy} for additional information).
 
-As this system-level tracing functionality is part of the automated collection process, no user intervention is necessary to enable it (assuming that the program was granted the rights needed). However, if, for some reason, you would want to prevent your application from trying to access kernel data, you may recompile your program with the \texttt{TRACY\_NO\_SYSTEM\_TRACING} define.
+As this system-level tracing functionality is part of the automated collection process, no user intervention is necessary to enable it (assuming that the program was granted the rights needed). However, if, for some reason, you would want to prevent your application from trying to access kernel data, you may recompile your program with the \texttt{TRACY\_NO\_SYSTEM\_TRACING} define. If you want to disable this functionality dynamically at runtime instead, you can set the \texttt{TRACY\_NO\_SYSTEM\_TRACING} environment variable to "1".
 
 \begin{bclogo}[
 noborder=true,
